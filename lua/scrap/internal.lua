@@ -71,15 +71,6 @@ local function replicateString(string, times)
   return result
 end
 
----Capitalizes the first char of a string
----@param string string
----@return string
----@nodiscard
-local function capitalizeString(string)
-  assert(#string > 0)
-  return string.upper(string.sub(string, 1, 1)) .. string.sub(string, 2)
-end
-
 ---Strongly typed version of table.insert for pushing elements
 ---@generic T
 ---@param list T[]
@@ -139,6 +130,8 @@ end
 ---@alias ScrapAbbreviation Pair<string>
 
 ---@class Pair<T>: { [1]: T, [2]: T}
+
+---@alias Transformer fun(word: string): string
 
 ---Build a string slice struct
 ---@param text string
@@ -421,6 +414,112 @@ local function expand(unprocessed, context, out)
   end
 end
 
+---Change string to camelCase
+---@param word string
+---@return string
+---@nodiscard
+local function camel_case(word)
+  word = string.gsub(word, "-", "_")
+  if not string.find(word, "_") and string.find(word, "%l") then
+    word = string.gsub(word, "^.", string.lower)
+  else
+    word = string.gsub(word, "%C(_=)(.)", function(match1, match2)
+      if match1 == "" then
+        return string.lower(match2)
+      else
+        return string.upper(match2)
+      end
+    end)
+  end
+  return word
+end
+
+---Change string to MixedCase (or PascalCase): capitalized camelCase
+---@param word string
+---@return string
+---@nodiscard
+local function mixed_case(word)
+	if #string == 0 then return "" end
+	word = camel_case(word)
+	word = string.upper(string.sub(word, 1, 1)) .. string.sub(word, 2)
+	return word
+end
+
+---Change string to snake_case
+---@param word string
+---@return string
+---@nodiscard
+local function snake_case(word)
+  word = string.gsub(word, "::", "/")
+  word = string.gsub(word, "(%u+)(%u%l)", "%1_%2")
+  word = string.gsub(word, "(%l|%d)(%u)", "%1_%2")
+  word = string.gsub(word, "[.-]", "_")
+  word = string.lower(word)
+  return word
+end
+
+---Change string to snake_case in uppercase
+---@param word string
+---@return string
+---@nodiscard
+local function upper_case(word)
+	return string.upper(snake_case(word))
+end
+
+---Change string to snake_case, but link words with dashes
+---@param word string
+---@return string
+---@nodiscard
+local function dash_case(word)
+	return ({string.gsub(snake_case(word), "_", "-")})[1]
+end
+
+---Change string to snake_case, but link words with spaces
+---@param word string
+---@return string
+---@nodiscard
+local function space_case(word)
+	return ({string.gsub(snake_case(word), "_", " ")})[1]
+end
+
+---Change string to snake_case, but link words with dots
+---@param word string
+---@return string
+---@nodiscard
+local function dot_case(word)
+	return ({string.gsub(snake_case(word), "_", ".")})[1]
+end
+
+---Change all lowercase letters to uppercase
+---@param word string
+---@return string
+---@nodiscard
+local function all_caps(word)
+	return string.upper(word)
+end
+
+---Capitalize the first char of a string
+---@param word string
+---@return string
+---@nodiscard
+local function capitalized(word)
+  if #word ==  0 then return "" end
+	return string.upper(string.sub(word, 1, 1)) .. string.sub(word, 2)
+end
+
+---@type { [string]: Transformer }
+local transformers = {
+	camel_case = camel_case,
+	mixed_case = mixed_case,
+	snake_case = snake_case,
+	upper_case = upper_case,
+	dash_case = dash_case,
+	space_case = space_case,
+	dot_case = dot_case,
+	all_caps = all_caps,
+	capitalized = capitalized,
+}
+
 -- }}}
 -- {{{Expansion options & casing variations
 ---@class ScrapExpansionOptions
@@ -446,17 +545,14 @@ local function with_casing(input, options, out)
   -- Base abbreviation
   listPush(out, { from, to })
 
-  if options.all_caps then
-    -- All uppercase
-    listPush(out, { string.upper(from), string.upper(to) })
-  end
-
-  if options.capitalized then
-    -- Uppercase first char
-    if #from and #to then
-      listPush(out, { capitalizeString(from), capitalizeString(to) })
-    end
-  end
+	for name, active in pairs(options) do
+		if active then
+			local transformer = transformers[name]
+			if transformer ~= nil then
+				listPush(out, {transformer(from), transformer(to)})
+			end
+		end
+	end
 end
 
 -- }}}
