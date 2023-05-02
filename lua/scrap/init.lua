@@ -10,5 +10,6 @@ function scrap.many_local_abbreviations(abbreviations)
 end
 
 scrap.expand_many = internal.expand_many
+scrap.setup = internal.setup
 
 return scrap

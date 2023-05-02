@@ -615,4 +615,16 @@ end
 -- }}}
 -- }}}
 
+function scrap.setup(options)
+	options = options or {}
+	local default_expansion_options_opt = options["default_expansion_options"]
+	if default_expansion_options_opt ~= nil then
+		default_expansion_options = default_expansion_options_opt
+	end
+	local transformers_opt = options["transformers"]
+	if transformers_opt ~= nil then
+		transformers = merge_tables(transformers, transformers_opt)
+	end
+end
+
 return scrap
